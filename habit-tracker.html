@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日習慣追蹤</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500&family=DM+Serif+Display:ital@0;1&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FDF6F3;
+    --bg2: #F5DDD5;
+    --border: #ECC5BC;
+    --accent: #C97B6A;
+    --accent2: #E0A898;
+    --accent-light: #F2D0C8;
+    --text: #3D2B25;
+    --text-mid: #7A504A;
+    --text-soft: #B08880;
+    --white: #FFFAF8;
+    --shadow: rgba(201,123,106,0.12);
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Lato', 'Noto Serif TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    background: var(--white);
+    border-right: 1.5px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 32px 0;
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    z-index: 100;
+  }
+
+  .logo {
+    padding: 0 24px 28px;
+    border-bottom: 1px solid var(--accent-light);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon svg { display: block; }
+
+  .logo-text h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+
+  .logo-text p {
+    font-size: 11px;
+    color: var(--text-soft);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .nav { padding: 20px 0; flex: 1; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 24px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-mid);
+    border-left: 3px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .nav-item svg { flex-shrink: 0; }
+  .nav-item:hover { background: var(--bg); color: var(--accent); }
+  .nav-item:hover svg { color: var(--accent); }
+
+  .nav-item.active {
+    background: var(--bg2);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 500;
+  }
+
+  .nav-item.active svg { color: var(--accent); }
+
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--accent-light);
+  }
+
+  .btn-export {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-mid);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .btn-export:hover {
+    background: var(--bg2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    padding: 36px 40px;
+    max-width: calc(100vw - 240px);
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+  }
+
+  .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); }
+  .page-date { font-size: 13px; color: var(--text-soft); margin-top: 4px; }
+
+  .btn-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 16px var(--shadow);
+  }
+
+  .btn-add:hover { background: #b86a59; transform: translateY(-1px); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── HABIT CARDS ── */
+  .habits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+
+  .habit-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .habit-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent-light);
+    transition: background 0.3s;
+  }
+
+  .habit-card.done::before { background: var(--accent); }
+  .habit-card.done { background: #FEF6F4; }
+
+  .habit-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .habit-info { display: flex; align-items: center; gap: 10px; }
+
+  .habit-icon-wrap {
+    width: 44px;
+    height: 44px;
+    background: var(--bg2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  .habit-icon-wrap svg { display: block; }
+
+  .habit-name { font-size: 15px; font-weight: 500; color: var(--text); }
+  .habit-goal { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+
+  .habit-actions { display: flex; gap: 6px; }
+
+  .btn-icon {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .btn-icon:hover { background: var(--bg2); color: var(--accent); border-color: var(--accent); }
+
+  .habit-streak {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-soft);
+    margin-bottom: 14px;
+  }
+
+  .streak-icon { color: var(--accent); display: flex; align-items: center; }
+  .streak-num { font-weight: 600; color: var(--accent); font-size: 14px; }
+
+  .progress-bar-wrap {
+    height: 6px;
+    background: var(--bg2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 99px;
+    transition: width 0.5s ease;
+  }
+
+  .btn-check {
+    width: 100%;
+    padding: 9px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .btn-check.unchecked {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text-mid);
+  }
+
+  .btn-check.unchecked:hover {
+    background: var(--bg2);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-check.checked {
+    background: var(--accent);
+    border: 1.5px solid var(--accent);
+    color: white;
+  }
+
+  .progress-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .progress-input {
+    flex: 1;
+    padding: 7px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .progress-input:focus { border-color: var(--accent); }
+  .progress-unit { font-size: 13px; color: var(--text-soft); white-space: nowrap; }
+
+  .week-row { display: flex; gap: 6px; margin-top: 8px; }
+
+  .week-dot {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: var(--text-soft);
+  }
+
+  .week-dot.filled { background: var(--accent); }
+  .week-dot.today { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── STATS ── */
+  .stats-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+
+  .stat-label { font-size: 12px; color: var(--text-soft); letter-spacing: 0.06em; text-transform: uppercase; }
+  .stat-value { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--accent); margin: 4px 0 2px; }
+  .stat-sub { font-size: 12px; color: var(--text-soft); }
+
+  .chart-wrap {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .chart-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .chart-title svg { color: var(--accent); }
+
+  .chart-toggle {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .toggle-btn {
+    padding: 4px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ── MANAGE ── */
+  .manage-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .manage-item {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .manage-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--bg2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+
+  .manage-info { flex: 1; }
+  .manage-name { font-size: 14px; font-weight: 500; }
+  .manage-meta { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+
+  .btn-delete {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-soft);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+
+  .btn-delete:hover { border-color: #e08080; color: #c06060; background: #fff0f0; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(61,43,37,0.35);
+    backdrop-filter: blur(3px);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    width: 440px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(201,123,106,0.18);
+  }
+
+  .modal h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .form-input, .form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  .form-input:focus, .form-select:focus { border-color: var(--accent); }
+
+  /* SVG icon picker */
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .icon-btn {
+    width: 40px; height: 40px;
+    border: 1.5px solid transparent;
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text-soft);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--bg2); color: var(--accent); }
+
+  .icon-btn.selected {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    color: var(--accent);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    padding: 11px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-mid);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover { background: var(--bg2); }
+
+  .btn-save {
+    flex: 2;
+    padding: 11px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+
+  .btn-save:hover { background: #b86a59; }
+
+  /* ── HEATMAP ── */
+  .heatmap-wrap {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(26, 1fr);
+    gap: 3px;
+    margin-top: 14px;
+  }
+
+  .heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--bg2);
+    transition: background 0.2s;
+  }
+
+  .heatmap-cell[data-level="1"] { background: var(--accent-light); }
+  .heatmap-cell[data-level="2"] { background: var(--accent2); }
+  .heatmap-cell[data-level="3"] { background: var(--accent); }
+
+  /* ── EMPTY ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-soft);
+  }
+
+  .empty-state .big { margin-bottom: 16px; display: flex; justify-content: center; color: var(--accent-light); }
+  .empty-state p { font-size: 14px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    background: var(--accent);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 768px) {
+    /* Sidebar 縮成細條 */
+    .sidebar { width: 56px; }
+    .logo-text, .nav-item span { display: none; }
+    .logo { justify-content: center; padding: 0 0 20px; }
+    .nav-item { justify-content: center; padding: 14px 0; }
+    .sidebar-footer { padding: 12px 8px; }
+    .btn-export { padding: 10px 6px; gap: 0; font-size: 0; }
+    .btn-export svg { margin: 0; }
+
+    /* Main content */
+    .main { margin-left: 56px; padding: 24px 16px 40px; max-width: calc(100vw - 56px); }
+
+    /* Page header — 垂直排列，標題與按鈕不重疊 */
+    .page-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .page-title { font-size: 22px; line-height: 1.3; }
+    .page-date { font-size: 12px; margin-top: 4px; white-space: normal; }
+
+    .btn-add {
+      width: 100%;
+      justify-content: center;
+      padding: 12px;
+      font-size: 14px;
+      border-radius: 14px;
+    }
+
+    /* Habits grid — 單欄 */
+    .habits-grid {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    /* Card 內部間距加大 */
+    .habit-card { padding: 18px 16px 16px 20px; }
+
+    .habit-top { margin-bottom: 16px; }
+    .habit-info { gap: 12px; }
+    .habit-name { font-size: 15px; line-height: 1.4; }
+    .habit-goal { font-size: 12px; margin-top: 3px; }
+
+    .habit-streak { margin-bottom: 16px; gap: 6px; font-size: 13px; }
+    .streak-num { font-size: 15px; }
+
+    .progress-bar-wrap { height: 7px; margin-bottom: 16px; }
+
+    .week-row { gap: 5px; margin-top: 0; margin-bottom: 14px; }
+    .week-dot { width: 100%; height: 26px; border-radius: 7px; font-size: 10px; flex: 1; }
+
+    .btn-check { padding: 12px; font-size: 14px; border-radius: 12px; }
+
+    /* Stats */
+    .stats-cards { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { padding: 16px; }
+    .stat-value { font-size: 28px; }
+
+    /* Charts */
+    .charts-grid { grid-template-columns: 1fr; }
+    .chart-wrap { padding: 18px 16px; }
+
+    /* Heatmap */
+    .heatmap-grid { grid-template-columns: repeat(13, 1fr); gap: 2px; }
+
+    /* Manage */
+    .manage-item { padding: 14px 16px; gap: 12px; }
+
+    /* Modal */
+    .modal { padding: 24px 20px; border-radius: 20px; }
+    .icon-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C97B6A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="17" rx="3"/>
+          <path d="M8 2v4M16 2v4M3 10h18"/>
+          <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>Habit</h1>
+        <p>Daily Tracker</p>
+      </div>
+    </div>
+
+    <div class="nav">
+      <div class="nav-item active" onclick="switchSection('today', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 7v5l3 3"/>
+        </svg>
+        <span>今日習慣</span>
+      </div>
+      <div class="nav-item" onclick="switchSection('stats', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 18l4-8 4 5 4-3 4 6"/>
+          <path d="M3 21h18"/>
+        </svg>
+        <span>統計分析</span>
+      </div>
+      <div class="nav-item" onclick="switchSection('manage', this)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <path d="M9 12h6M9 16h4"/>
+        </svg>
+        <span>管理項目</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-export" onclick="exportJSON()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12M7 14l5 5 5-5M5 20h14"/>
+        </svg>
+        匯出 JSON
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TODAY -->
+    <section class="section active" id="section-today">
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="greeting">今日習慣</div>
+          <div class="page-date" id="today-date"></div>
+        </div>
+        <button class="btn-add" onclick="openModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          新增習慣
+        </button>
+      </div>
+      <div class="habits-grid" id="habits-grid"></div>
+    </section>
+
+    <!-- STATS -->
+    <section class="section" id="section-stats">
+      <div class="page-header">
+        <div>
+          <div class="page-title">統計分析</div>
+          <div class="page-date">追蹤你的進步軌跡</div>
+        </div>
+        <div class="chart-toggle">
+          <button class="toggle-btn active" onclick="switchChart('week', this)">本週</button>
+          <button class="toggle-btn" onclick="switchChart('month', this)">本月</button>
+        </div>
+      </div>
+
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-label">今日完成</div>
+          <div class="stat-value" id="stat-today">0</div>
+          <div class="stat-sub" id="stat-today-sub">/ 0 項習慣</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">最長連續</div>
+          <div class="stat-value" id="stat-streak">0</div>
+          <div class="stat-sub">天不間斷</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">本月達成率</div>
+          <div class="stat-value" id="stat-rate">0%</div>
+          <div class="stat-sub">綜合所有習慣</div>
+        </div>
+      </div>
+
+      <div class="heatmap-wrap">
+        <div class="chart-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="5" height="5" rx="1"/><rect x="10" y="3" width="5" height="5" rx="1"/>
+            <rect x="17" y="3" width="4" height="5" rx="1"/><rect x="3" y="10" width="5" height="5" rx="1"/>
+            <rect x="10" y="10" width="5" height="5" rx="1"/><rect x="17" y="10" width="4" height="5" rx="1"/>
+            <rect x="3" y="17" width="5" height="4" rx="1"/><rect x="10" y="17" width="5" height="4" rx="1"/>
+          </svg>
+          半年打卡熱力圖
+        </div>
+        <div class="heatmap-grid" id="heatmap-grid"></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 18l4-8 4 5 4-3 4 6"/><path d="M3 21h18"/>
+            </svg>
+            完成率趨勢
+          </div>
+          <canvas id="chart-line" height="180"></canvas>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+            </svg>
+            各習慣佔比
+          </div>
+          <canvas id="chart-donut" height="180"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- MANAGE -->
+    <section class="section" id="section-manage">
+      <div class="page-header">
+        <div>
+          <div class="page-title">管理項目</div>
+          <div class="page-date">調整你的習慣清單</div>
+        </div>
+        <button class="btn-add" onclick="openModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          新增習慣
+        </button>
+      </div>
+      <div class="manage-list" id="manage-list"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <h2 id="modal-title">新增習慣</h2>
+
+    <div class="form-group">
+      <label class="form-label">習慣名稱</label>
+      <input class="form-input" id="form-name" placeholder="例：每天閱讀 30 分鐘" maxlength="30">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">選擇圖示</label>
+      <div class="icon-grid" id="icon-grid"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">類型</label>
+      <select class="form-select" id="form-type" onchange="toggleGoalField()">
+        <option value="check">每日打卡（完成 / 未完成）</option>
+        <option value="goal">目標進度（數值型）</option>
+      </select>
+    </div>
+
+    <div class="form-group" id="goal-fields" style="display:none">
+      <label class="form-label">目標數值</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="form-target" type="number" placeholder="30" style="flex:1">
+        <input class="form-input" id="form-unit" placeholder="分鐘、頁、次…" style="flex:2">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-save" onclick="saveHabit()">儲存習慣</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+  <span id="toast-text"></span>
+</div>
+
+<script>
+// ── SVG ICON LIBRARY (flat monochrome) ──
+const ICONS = {
+  book:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>`,
+  run:     `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="1.5"/><path d="M9 20l1.5-5L8 13l2-5"/><path d="M13 8l2 2 2-2"/><path d="M11 20h4"/><path d="M6 13l2-1"/></svg>`,
+  dumbbell:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v16M18 4v16M3 7h3M18 7h3M3 17h3M18 17h3M6 12h12"/></svg>`,
+  leaf:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 19.49A10 10 0 0019 8z"/><path d="M3.82 19.49L12 12"/></svg>`,
+  drop:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6 10 6 14 12 20c5 0 8-3 8-7 0-4-2-7-8-11z"/></svg>`,
+  moon:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>`,
+  pen:     `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`,
+  palette: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10.5" r="1"/><circle cx="14" cy="8" r="1"/><circle cx="15.5" cy="13.5" r="1"/><path d="M12 20c2-3.5 0-6-3-6h-1"/></svg>`,
+  music:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
+  sun:     `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`,
+  heart:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
+  target:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>`,
+  star:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  apple:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-1.5 0-3 1-3 3s1.5 2 3 2 3-1 3-3-1.5-3-3-3z"/><path d="M12 8c-4 0-7 3-7 8s3 6 7 6 7-1 7-6-3-8-7-8z"/></svg>`,
+  swim:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><path d="M2 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><circle cx="17" cy="5" r="2"/><path d="M17 7l-4 5"/></svg>`,
+  bike:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-2l-2 5H5.5l4 6.5"/><path d="M15 6l3 5.5"/><path d="M10 9l5 8.5"/></svg>`,
+  brain:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 00-3 3 3 3 0 00-3 3c0 1.4.8 2.6 2 3.2V17a2 2 0 104 0v-1h1a2 2 0 000-4h-1V8a3 3 0 00-3-3z"/><path d="M12 5a3 3 0 013 3 3 3 0 013 3c0 1.4-.8 2.6-2 3.2V17a2 2 0 11-4 0v-1"/></svg>`,
+  pill:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5l10-10a4.95 4.95 0 00-7.07-7.07l-10 10a4.95 4.95 0 007.07 7.07z"/><path d="M8.5 8.5l7 7"/></svg>`,
+  chat:    `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>`,
+  camera:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>`,
+  coffee:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><path d="M6 1v3M10 1v3M14 1v3"/></svg>`,
+};
+
+const ICON_KEYS = Object.keys(ICONS);
+
+// ── DATA ──
+const TODAY = new Date().toISOString().split('T')[0];
+let habits = JSON.parse(localStorage.getItem('habits') || '[]');
+let records = JSON.parse(localStorage.getItem('records') || '{}');
+let editingId = null;
+let selectedIcon = 'book';
+let lineChart = null, donutChart = null;
+let chartPeriod = 'week';
+
+// ── INIT ──
+function init() {
+  renderDate();
+  renderIconGrid();
+  renderToday();
+  renderManage();
+}
+
+function renderDate() {
+  const d = new Date();
+  const days = ['日','一','二','三','四','五','六'];
+  document.getElementById('today-date').textContent =
+    `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · 星期${days[d.getDay()]}`;
+  const h = d.getHours();
+  const g = h < 12 ? '早安' : h < 18 ? '午安' : '晚安';
+  document.getElementById('greeting').textContent = `${g}，今日習慣`;
+}
+
+function renderIconGrid() {
+  const grid = document.getElementById('icon-grid');
+  grid.innerHTML = ICON_KEYS.map(key =>
+    `<button class="icon-btn ${key===selectedIcon?'selected':''}" onclick="selectIcon('${key}',this)" title="${key}">${ICONS[key]}</button>`
+  ).join('');
+}
+
+// ── TODAY ──
+function renderToday() {
+  const grid = document.getElementById('habits-grid');
+  if (!habits.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="big">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6 10 6 14 12 20c5 0 8-3 8-7 0-4-2-7-8-11z"/></svg>
+      </div>
+      <p>還沒有習慣，點右上角新增吧！</p></div>`;
+    return;
+  }
+  grid.innerHTML = habits.map(h => buildCard(h)).join('');
+}
+
+function buildCard(h) {
+  const rec = records[TODAY] || {};
+  const isDone = !!rec[h.id];
+  const streak = getStreak(h.id);
+  const weekBits = getWeekBits(h.id);
+  const iconSvg = ICONS[h.icon] || ICONS['target'];
+
+  let progressSection = '';
+  if (h.type === 'goal') {
+    const val = (rec[h.id] && rec[h.id] !== true) ? rec[h.id] : 0;
+    const pct = Math.min(100, Math.round(val / h.target * 100));
+    progressSection = `
+      <div class="progress-input-wrap">
+        <input class="progress-input" type="number" value="${val}" min="0"
+          onchange="updateProgress('${h.id}', this.value)" placeholder="0">
+        <span class="progress-unit">/ ${h.target} ${h.unit}</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`;
+  } else {
+    progressSection = `<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${isDone?100:0}%"></div></div>`;
+  }
+
+  const checkIcon = isDone
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 13l4 4L19 7"/></svg>`
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/></svg>`;
+
+  return `
+  <div class="habit-card ${isDone?'done':''}" id="card-${h.id}">
+    <div class="habit-top">
+      <div class="habit-info">
+        <div class="habit-icon-wrap">${iconSvg}</div>
+        <div>
+          <div class="habit-name">${h.name}</div>
+          <div class="habit-goal">${h.type==='goal'?`目標 ${h.target}${h.unit}`:'每日打卡'}</div>
+        </div>
+      </div>
+      <div class="habit-actions">
+        <button class="btn-icon" onclick="openModal('${h.id}')" title="編輯">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="habit-streak">
+      <span class="streak-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 2A7 7 0 0012 8c0 2-1 4-3 5 0 0 3 0 5-3 .5 1 .5 2.5-.5 4 0 0 4-2 4-6a6 6 0 00-9-6z"/></svg>
+      </span>
+      <span class="streak-num">${streak}</span>
+      <span>天連續</span>
+    </div>
+    ${progressSection}
+    <div class="week-row">${weekBits}</div>
+    ${h.type==='check'?`
+    <button class="btn-check ${isDone?'checked':'unchecked'}" onclick="toggleCheck('${h.id}')">
+      ${checkIcon}
+      ${isDone?'已完成今日':'標記完成'}
+    </button>`:''}
+  </div>`;
+}
+
+function getWeekBits(hid) {
+  const result = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const done = records[key] && records[key][hid];
+    const isToday = i === 0;
+    const labels = ['日','一','二','三','四','五','六'];
+    const label = labels[d.getDay()];
+    result.push(`<div class="week-dot ${done?'filled':''} ${isToday?'today':''}" title="${key}">${isToday?'今':(!done?label:'')}</div>`);
+  }
+  return result.join('');
+}
+
+function getStreak(hid) {
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const key = d.toISOString().split('T')[0];
+    if (records[key] && records[key][hid]) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else break;
+  }
+  return streak;
+}
+
+function toggleCheck(hid) {
+  if (!records[TODAY]) records[TODAY] = {};
+  records[TODAY][hid] = !records[TODAY][hid];
+  save();
+  renderToday();
+}
+
+function updateProgress(hid, val) {
+  if (!records[TODAY]) records[TODAY] = {};
+  const h = habits.find(x => x.id === hid);
+  const num = parseFloat(val) || 0;
+  records[TODAY][hid] = num >= h.target ? true : num;
+  save();
+  const card = document.getElementById(`card-${hid}`);
+  if (card) card.outerHTML = buildCard(h);
+}
+
+// ── MANAGE ──
+function renderManage() {
+  const list = document.getElementById('manage-list');
+  if (!habits.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="big"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div>
+      <p>還沒有習慣項目</p></div>`;
+    return;
+  }
+  list.innerHTML = habits.map(h => {
+    const iconSvg = ICONS[h.icon] || ICONS['target'];
+    return `
+    <div class="manage-item">
+      <div class="manage-icon">${iconSvg}</div>
+      <div class="manage-info">
+        <div class="manage-name">${h.name}</div>
+        <div class="manage-meta">${h.type==='goal'?`目標進度 · ${h.target}${h.unit}`:'每日打卡'} · 建立 ${h.created}</div>
+      </div>
+      <button class="btn-icon" onclick="openModal('${h.id}')" style="margin-right:4px" title="編輯">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button class="btn-delete" onclick="deleteHabit('${h.id}')">刪除</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteHabit(hid) {
+  if (!confirm('確定要刪除這個習慣嗎？')) return;
+  habits = habits.filter(h => h.id !== hid);
+  save();
+  renderToday();
+  renderManage();
+  showToast('習慣已刪除');
+}
+
+// ── MODAL ──
+function openModal(hid = null) {
+  editingId = hid;
+  document.getElementById('modal-title').textContent = hid ? '編輯習慣' : '新增習慣';
+
+  if (hid) {
+    const h = habits.find(x => x.id === hid);
+    document.getElementById('form-name').value = h.name;
+    document.getElementById('form-type').value = h.type;
+    document.getElementById('form-target').value = h.target || '';
+    document.getElementById('form-unit').value = h.unit || '';
+    selectedIcon = h.icon || 'book';
+  } else {
+    document.getElementById('form-name').value = '';
+    document.getElementById('form-type').value = 'check';
+    document.getElementById('form-target').value = '';
+    document.getElementById('form-unit').value = '';
+    selectedIcon = 'book';
+  }
+  renderIconGrid();
+  toggleGoalField();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function toggleGoalField() {
+  const isGoal = document.getElementById('form-type').value === 'goal';
+  document.getElementById('goal-fields').style.display = isGoal ? '' : 'none';
+}
+
+function selectIcon(key, btn) {
+  selectedIcon = key;
+  document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function saveHabit() {
+  const name = document.getElementById('form-name').value.trim();
+  if (!name) { showToast('請輸入習慣名稱'); return; }
+  const type = document.getElementById('form-type').value;
+  const target = parseFloat(document.getElementById('form-target').value) || 1;
+  const unit = document.getElementById('form-unit').value.trim() || '次';
+
+  if (editingId) {
+    const h = habits.find(x => x.id === editingId);
+    h.name = name; h.icon = selectedIcon; h.type = type; h.target = target; h.unit = unit;
+  } else {
+    habits.push({ id: Date.now().toString(), name, icon: selectedIcon, type, target, unit, created: TODAY });
+  }
+  save();
+  renderToday();
+  renderManage();
+  closeModal();
+  showToast(editingId ? '習慣已更新' : '新習慣已新增');
+}
+
+// ── STATS ──
+function renderStats() {
+  const rec = records[TODAY] || {};
+  const done = habits.filter(h => rec[h.id]).length;
+  document.getElementById('stat-today').textContent = done;
+  document.getElementById('stat-today-sub').textContent = `/ ${habits.length} 項習慣`;
+
+  let maxStreak = 0;
+  habits.forEach(h => maxStreak = Math.max(maxStreak, getStreak(h.id)));
+  document.getElementById('stat-streak').textContent = maxStreak;
+
+  const now = new Date();
+  let totalDays = 0, totalDone = 0;
+  for (let d = 1; d <= now.getDate(); d++) {
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    habits.forEach(h => {
+      totalDays++;
+      if (records[key] && records[key][h.id]) totalDone++;
+    });
+  }
+  document.getElementById('stat-rate').textContent = totalDays ? Math.round(totalDone/totalDays*100)+'%' : '0%';
+
+  renderHeatmap();
+  renderCharts();
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('heatmap-grid');
+  const cells = [];
+  for (let i = 181; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const rec = records[key] || {};
+    const count = habits.filter(h => rec[h.id]).length;
+    const total = habits.length || 1;
+    const level = count === 0 ? 0 : count < total * 0.33 ? 1 : count < total * 0.67 ? 2 : 3;
+    cells.push(`<div class="heatmap-cell" data-level="${level}" title="${key}: ${count}/${total}"></div>`);
+  }
+  grid.innerHTML = cells.join('');
+}
+
+function renderCharts() {
+  const labels = [], data = [];
+  const days = chartPeriod === 'week' ? 7 : 30;
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().split('T')[0];
+    const rec = records[key] || {};
+    const done = habits.filter(h => rec[h.id]).length;
+    const pct = habits.length ? Math.round(done / habits.length * 100) : 0;
+    labels.push(chartPeriod === 'week' ? ['日','一','二','三','四','五','六'][d.getDay()] : `${d.getDate()}日`);
+    data.push(pct);
+  }
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('chart-line'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: '#C97B6A',
+        backgroundColor: 'rgba(201,123,106,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#C97B6A',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v+'%', color: '#B08880' }, grid: { color: '#F5DDD5' } },
+        x: { ticks: { color: '#B08880' }, grid: { display: false } }
+      }
+    }
+  });
+
+  if (donutChart) donutChart.destroy();
+  const habitDone = habits.map(h => {
+    let cnt = 0;
+    Object.values(records).forEach(rec => { if (rec[h.id]) cnt++; });
+    return { name: h.name, count: cnt };
+  });
+  const colors = ['#C97B6A','#E0A898','#ECC5BC','#F2D0C8','#D4907F','#B86A59','#F5DDD5'];
+  donutChart = new Chart(document.getElementById('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: habitDone.map(x => x.name),
+      datasets: [{
+        data: habitDone.map(x => x.count || 0),
+        backgroundColor: colors.slice(0, habitDone.length),
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#7A504A', font: { size: 11 }, padding: 10 } }
+      }
+    }
+  });
+}
+
+function switchChart(period, btn) {
+  chartPeriod = period;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCharts();
+}
+
+// ── NAV ──
+function switchSection(id, navEl) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  navEl.classList.add('active');
+  if (id === 'stats') renderStats();
+}
+
+// ── EXPORT ──
+function exportJSON() {
+  const data = { habits, records, exported: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `habit-tracker-${TODAY}.json`;
+  a.click();
+  showToast('資料匯出成功');
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  document.getElementById('toast-text').textContent = msg;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── SAVE ──
+function save() {
+  localStorage.setItem('habits', JSON.stringify(habits));
+  localStorage.setItem('records', JSON.stringify(records));
+}
+
+init();
+</script>
+</body>
+</html>
